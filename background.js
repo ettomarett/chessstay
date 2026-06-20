@@ -1,5 +1,5 @@
 async function getState() {
-  return chrome.storage.session.get({ alertWindowId: null, isMyTurn: false });
+  return chrome.storage.session.get({ alertWindowId: null, isMyTurn: false, gameTabId: null });
 }
 
 async function getSavedPosition() {
@@ -46,14 +46,22 @@ async function closeAlertWindow() {
   }
 }
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type === 'MY_TURN') {
-    chrome.storage.session.set({ isMyTurn: true });
+    chrome.storage.session.set({ isMyTurn: true, gameTabId: sender.tab?.id ?? null });
     openAlertWindow();
   } else if (message.type === 'TURN_OVER') {
-    chrome.storage.session.set({ isMyTurn: false });
+    chrome.storage.session.set({ isMyTurn: false, gameTabId: null });
     closeAlertWindow();
   }
+});
+
+// Guaranteed cleanup when the chess.com tab is closed.
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const { gameTabId } = await getState();
+  if (tabId !== gameTabId) return;
+  chrome.storage.session.set({ isMyTurn: false, gameTabId: null });
+  closeAlertWindow();
 });
 
 // When the user clicks any other Chrome window, pull the alert back to front.

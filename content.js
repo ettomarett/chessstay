@@ -52,5 +52,10 @@ if (titleEl) {
   titleObserver.observe(titleEl, { childList: true });
 }
 
+// Send TURN_OVER when the tab is closed or navigated away from.
+window.addEventListener('pagehide', () => {
+  chrome.runtime.sendMessage({ type: 'TURN_OVER' });
+});
+
 // Run once on load in case the page already shows your turn.
 onDomChange();
