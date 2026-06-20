@@ -1,35 +1,71 @@
 async function getState() {
-  return chrome.storage.session.get({ gameTabId: null });
+  return chrome.storage.session.get({ isMyTurn: false, gameTabId: null, overlayTabId: null });
 }
 
-// Force-inject remote-overlay.js into every open http/https tab except the chess.com tab.
-async function injectIntoAllTabs() {
-  const { gameTabId } = await getState();
-  const tabs = await chrome.tabs.query({});
-  for (const tab of tabs) {
-    if (!tab.id || !tab.url) continue;
-    if (!tab.url.startsWith('http')) continue;
-    if (tab.id === gameTabId) continue;
-    try {
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['remote-overlay.js'] });
-    } catch {}
-  }
+async function showOnTab(tabId) {
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['remote-overlay.js'] });
+    await chrome.storage.session.set({ overlayTabId: tabId });
+  } catch {}
 }
+
+async function hideCurrentOverlay() {
+  const { overlayTabId } = await getState();
+  if (!overlayTabId) return;
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: overlayTabId },
+      func: () => {
+        document.getElementById('chessstay-remote')?.remove();
+        document.getElementById('chessstay-remote-style')?.remove();
+        window._chessstayLoaded = false;
+      },
+    });
+  } catch {}
+  await chrome.storage.session.set({ overlayTabId: null });
+}
+
+// ── Messages from chess.com content script ────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender) => {
+  const tabId = sender.tab?.id ?? null;
+
   if (message.type === 'MY_TURN') {
-    chrome.storage.session.set({ gameTabId: sender.tab?.id ?? null });
-    chrome.storage.local.set({ showRemoteOverlay: true });
-    injectIntoAllTabs();
+    chrome.storage.session.set({ isMyTurn: true, gameTabId: tabId });
+    chrome.tabs.query({ active: true, currentWindow: true }, ([active]) => {
+      if (active && active.id !== tabId) showOnTab(active.id);
+    });
 
   } else if (message.type === 'TURN_OVER') {
-    chrome.storage.local.set({ showRemoteOverlay: false });
+    chrome.storage.session.set({ isMyTurn: false });
+    hideCurrentOverlay();
   }
 });
+
+// ── Tab switching — move overlay to whichever tab is active ───────────────────
+
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  const { isMyTurn, gameTabId } = await getState();
+  if (!isMyTurn) return;
+  await hideCurrentOverlay();
+  if (tabId !== gameTabId) showOnTab(tabId);
+});
+
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+  const { isMyTurn, gameTabId } = await getState();
+  if (!isMyTurn) return;
+  const [active] = await chrome.tabs.query({ active: true, windowId });
+  if (!active) return;
+  await hideCurrentOverlay();
+  if (active.id !== gameTabId) showOnTab(active.id);
+});
+
+// ── Tab close ─────────────────────────────────────────────────────────────────
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   const { gameTabId } = await getState();
   if (tabId !== gameTabId) return;
-  chrome.storage.session.set({ gameTabId: null });
-  chrome.storage.local.set({ showRemoteOverlay: false });
+  chrome.storage.session.set({ isMyTurn: false, gameTabId: null });
+  hideCurrentOverlay();
 });

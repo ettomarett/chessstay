@@ -16,10 +16,10 @@ if (!window._chessstayLoaded) {
         display: flex; flex-direction: column; align-items: center; gap: 6px;
         box-shadow: 0 4px 24px rgba(0,0,0,.6);
         font-family: 'Segoe UI', sans-serif; color: #fff;
-        pointer-events: none;
+        cursor: move; user-select: none;
       }
-      #chessstay-remote .k { font-size: 30px; animation: cspulse .8s ease-in-out infinite alternate; }
-      #chessstay-remote .t { font-size: 13px; font-weight: 800; color: #f0c040; letter-spacing: 1px; }
+      #chessstay-remote .k { font-size: 30px; animation: cspulse .8s ease-in-out infinite alternate; pointer-events: none; }
+      #chessstay-remote .t { font-size: 13px; font-weight: 800; color: #f0c040; letter-spacing: 1px; pointer-events: none; }
     `;
     document.head.appendChild(style);
 
@@ -29,34 +29,44 @@ if (!window._chessstayLoaded) {
     document.body.appendChild(el);
 
     try {
-      const ctx = new AudioContext();
-      [523, 659, 784].forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = freq; osc.type = 'sine';
-        gain.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
-        osc.start(ctx.currentTime + i * 0.12);
-        osc.stop(ctx.currentTime  + i * 0.12 + 0.4);
+      chrome.storage.local.get({ remoteLeft: null, remoteTop: null }, ({ remoteLeft, remoteTop }) => {
+        if (remoteLeft !== null) {
+          el.style.left   = remoteLeft + 'px';
+          el.style.top    = remoteTop  + 'px';
+          el.style.right  = 'auto';
+          el.style.bottom = 'auto';
+        }
       });
     } catch {}
+
+    makeDraggable(el);
   }
 
-  function hideOverlay() {
-    document.getElementById('chessstay-remote')?.remove();
-    document.getElementById('chessstay-remote-style')?.remove();
+  function makeDraggable(el) {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const rect  = el.getBoundingClientRect();
+      let left = rect.left, top = rect.top;
+      el.style.left = left + 'px'; el.style.top = top + 'px';
+      el.style.right = 'auto'; el.style.bottom = 'auto';
+
+      const startX = e.clientX, startY = e.clientY;
+
+      function onMove(e) {
+        left = rect.left + (e.clientX - startX);
+        top  = rect.top  + (e.clientY - startY);
+        el.style.left = left + 'px';
+        el.style.top  = top  + 'px';
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup',   onUp);
+        try { chrome.storage.local.set({ remoteLeft: Math.round(left), remoteTop: Math.round(top) }); } catch {}
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup',   onUp);
+    });
   }
 
-  // Hide/show when storage flag changes (fires in all tabs automatically).
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || !('showRemoteOverlay' in changes)) return;
-    if (changes.showRemoteOverlay.newValue) showOverlay();
-    else hideOverlay();
-  });
-
-  // Show immediately if already active when this script runs.
-  chrome.storage.local.get({ showRemoteOverlay: false }, ({ showRemoteOverlay }) => {
-    if (showRemoteOverlay) showOverlay();
-  });
+  showOverlay();
 }
