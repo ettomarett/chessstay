@@ -1,3 +1,22 @@
+// On every service worker start (extension load, reload, or Chrome restart):
+// wipe stale state and scrub any leftover overlay elements from all open tabs.
+(async () => {
+  await chrome.storage.local.set({ showRemoteOverlay: false });
+  await chrome.storage.session.set({ isMyTurn: false, gameTabId: null, overlayTabId: null });
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url?.startsWith('http')) continue;
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        document.getElementById('chessstay-remote')?.remove();
+        document.getElementById('chessstay-remote-style')?.remove();
+        window._chessstayLoaded = false;
+      },
+    }).catch(() => {});
+  }
+})();
+
 async function getState() {
   return chrome.storage.session.get({ isMyTurn: false, gameTabId: null, overlayTabId: null });
 }
