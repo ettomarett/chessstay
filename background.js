@@ -94,7 +94,7 @@ async function hideCurrentOverlay() {
   await chrome.storage.session.set({ isMyTurn: false, gameTabId: null, overlayTabId: null });
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    if (!tab.id || !tab.url?.startsWith('http')) continue;
+    if (!tab.id || !tab.url?.match(/^(https?|file):\/\//)) continue;
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: hideOverlayInTab,
