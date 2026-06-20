@@ -9,6 +9,7 @@
     style.id = 'chessstay-remote-style';
     style.textContent = `
       @keyframes cspulse { from{transform:scale(1)} to{transform:scale(1.15)} }
+      @keyframes csblink { 0%,100%{background:#1a1a2e} 50%{background:#fff} }
       #chessstay-remote {
         position: fixed; bottom: 24px; right: 24px;
         width: 160px; padding: 12px 10px;
@@ -18,6 +19,7 @@
         box-shadow: 0 4px 24px rgba(0,0,0,.6);
         font-family: 'Segoe UI', sans-serif; color: #fff;
         cursor: move; user-select: none;
+        animation: csblink .8s ease-in-out infinite;
       }
       #chessstay-remote .k { font-size: 30px; animation: cspulse .8s ease-in-out infinite alternate; pointer-events: none; }
       #chessstay-remote .t { font-size: 13px; font-weight: 800; color: #f0c040; letter-spacing: 1px; pointer-events: none; }

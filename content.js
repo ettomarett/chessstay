@@ -30,6 +30,7 @@ function onDomChange() {
 // ── DOM overlay ───────────────────────────────────────────────────────────────
 
 const CSS = `
+  @keyframes cs-blink { 0%,100%{background:#1a1a2e} 50%{background:#fff} }
   #chessstay-overlay {
     position: fixed;
     top: 80px;
@@ -48,6 +49,7 @@ const CSS = `
     font-family: 'Segoe UI', sans-serif;
     cursor: move;
     user-select: none;
+    animation: cs-blink .8s ease-in-out infinite;
   }
   #chessstay-overlay .cs-knight {
     font-size: 34px;
@@ -92,7 +94,6 @@ function showOverlay() {
   } catch {}
 
   makeDraggable(overlay);
-  playBeep();
 }
 
 function removeOverlay() {
@@ -130,24 +131,6 @@ function makeDraggable(el) {
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup',   onUp);
   });
-}
-
-function playBeep() {
-  try {
-    const ctx = new AudioContext();
-    [523, 659, 784].forEach((freq, i) => {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
-      osc.start(ctx.currentTime + i * 0.12);
-      osc.stop(ctx.currentTime  + i * 0.12 + 0.4);
-    });
-  } catch {}
 }
 
 // ── Observers ─────────────────────────────────────────────────────────────────
