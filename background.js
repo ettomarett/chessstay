@@ -24,12 +24,14 @@ function showOverlayInTab() {
   document.body.appendChild(el);
 
   try {
-    chrome.storage.local.get({ remoteLeft: null, remoteTop: null }, ({ remoteLeft, remoteTop }) => {
-      if (remoteLeft !== null) {
-        el.style.left   = remoteLeft + 'px';
-        el.style.top    = remoteTop  + 'px';
-        el.style.right  = 'auto';
-        el.style.bottom = 'auto';
+    // Restore as right/bottom distance so position is consistent across tabs
+    // regardless of scrollbar width or viewport differences.
+    chrome.storage.local.get({ remoteRight: null, remoteBottom: null }, ({ remoteRight, remoteBottom }) => {
+      if (remoteRight !== null) {
+        el.style.right  = remoteRight  + 'px';
+        el.style.bottom = remoteBottom + 'px';
+        el.style.left   = 'auto';
+        el.style.top    = 'auto';
       }
     });
   } catch {}
@@ -49,7 +51,13 @@ function showOverlayInTab() {
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
-      try { chrome.storage.local.set({ remoteLeft: Math.round(left), remoteTop: Math.round(top) }); } catch {}
+      // Save as corner distance so restoring on any tab puts it in the same visual spot.
+      try {
+        chrome.storage.local.set({
+          remoteRight:  Math.round(window.innerWidth  - left - el.offsetWidth),
+          remoteBottom: Math.round(window.innerHeight - top  - el.offsetHeight),
+        });
+      } catch {}
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
