@@ -32,14 +32,18 @@
     document.body.appendChild(el);
 
     try {
-      chrome.storage.local.get({ remoteRight: null, remoteBottom: null }, ({ remoteRight, remoteBottom }) => {
-        if (remoteRight !== null) {
-          el.style.right  = remoteRight  + 'px';
-          el.style.bottom = remoteBottom + 'px';
-          el.style.left   = 'auto';
-          el.style.top    = 'auto';
+      chrome.storage.local.get(
+        { remoteRight: null, remoteBottom: null, blinkEnabled: true },
+        ({ remoteRight, remoteBottom, blinkEnabled }) => {
+          if (remoteRight !== null) {
+            el.style.right  = remoteRight  + 'px';
+            el.style.bottom = remoteBottom + 'px';
+            el.style.left   = 'auto';
+            el.style.top    = 'auto';
+          }
+          if (!blinkEnabled) el.style.animation = 'none';
         }
-      });
+      );
     } catch {}
 
     el.addEventListener('mousedown', e => {
@@ -75,11 +79,17 @@
     document.getElementById('chessstay-remote-style')?.remove();
   }
 
-  // React to MY_TURN / TURN_OVER via storage flag.
+  // React to MY_TURN / TURN_OVER and live setting changes via storage.
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== 'local' || !('showRemoteOverlay' in changes)) return;
-      if (changes.showRemoteOverlay.newValue) showOverlay(); else hideOverlay();
+      if (area !== 'local') return;
+      if ('showRemoteOverlay' in changes) {
+        if (changes.showRemoteOverlay.newValue) showOverlay(); else hideOverlay();
+      }
+      if ('blinkEnabled' in changes) {
+        const el = document.getElementById('chessstay-remote');
+        if (el) el.style.animation = changes.blinkEnabled.newValue ? '' : 'none';
+      }
     });
   } catch {}
 

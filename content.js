@@ -26,11 +26,40 @@ function onDomChange() {
     myTurnActive = true;
     showOverlay();
     send('MY_TURN');
+    maybePlaySound();
   } else if (!nowMyTurn && myTurnActive) {
     myTurnActive = false;
     removeOverlay();
     send('TURN_OVER');
   }
+}
+
+// Beep only when the chess tab is in the background (you're on another tab).
+// This is why sound never "triggers when we're on the chess page".
+function maybePlaySound() {
+  try {
+    chrome.storage.local.get({ soundEnabled: false }, ({ soundEnabled }) => {
+      if (soundEnabled && document.hidden) playBeep();
+    });
+  } catch {}
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523, 659, 784].forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
+      osc.start(ctx.currentTime + i * 0.12);
+      osc.stop(ctx.currentTime  + i * 0.12 + 0.4);
+    });
+  } catch {}
 }
 
 // ── DOM overlay ───────────────────────────────────────────────────────────────
@@ -84,6 +113,18 @@ function showOverlay() {
   if (overlay && !overlay.isConnected) overlay = null;
   if (overlay) return;
 
+  const opts = { nonChessOnly: false, blinkEnabled: true, csTop: 80, csLeft: null };
+  try {
+    chrome.storage.local.get(opts, buildOverlay);
+  } catch {
+    buildOverlay(opts);
+  }
+}
+
+function buildOverlay({ nonChessOnly, blinkEnabled, csTop, csLeft }) {
+  if (nonChessOnly) return;   // user wants the popup only on other tabs
+  if (overlay) return;
+
   const style = document.createElement('style');
   style.id = 'chessstay-style';
   style.textContent = CSS;
@@ -92,18 +133,14 @@ function showOverlay() {
   overlay = document.createElement('div');
   overlay.id = 'chessstay-overlay';
   overlay.innerHTML = '<div class="cs-knight">♞</div><div class="cs-label">YOUR TURN!</div>';
-  document.body.appendChild(overlay);
+  if (!blinkEnabled) overlay.style.animation = 'none';
 
-  // Restore saved position
-  try {
-    chrome.storage.local.get({ csTop: 80, csLeft: null }, ({ csTop, csLeft }) => {
-      overlay.style.top = csTop + 'px';
-      if (csLeft !== null) {
-        overlay.style.left = csLeft + 'px';
-        overlay.style.right = 'auto';
-      }
-    });
-  } catch {}
+  overlay.style.top = csTop + 'px';
+  if (csLeft !== null) {
+    overlay.style.left = csLeft + 'px';
+    overlay.style.right = 'auto';
+  }
+  document.body.appendChild(overlay);
 
   makeDraggable(overlay);
 }
@@ -164,6 +201,20 @@ window._chessstayContent = {
     removeOverlay();
   },
 };
+
+// Apply setting changes live while a turn is active.
+try {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if ('nonChessOnly' in changes) {
+      if (changes.nonChessOnly.newValue) removeOverlay();
+      else if (myTurnActive) showOverlay();
+    }
+    if ('blinkEnabled' in changes && overlay) {
+      overlay.style.animation = changes.blinkEnabled.newValue ? '' : 'none';
+    }
+  });
+} catch {}
 
 window.addEventListener('pagehide', () => {
   removeOverlay();

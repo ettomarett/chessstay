@@ -22,7 +22,7 @@ The extension does not collect, share, or send any information to external serve
 
 ## Data storage
 
-The only data written to storage is the screen position (x, y coordinates) of the alert popup window. This is stored locally using the Chrome extension storage API and never leaves your device.
+The only data written to storage is the on-screen position of the reminder popup and your preference settings (sound on/off, blinking on/off, show on non-chess pages only). This is stored locally using the Chrome extension storage API and never leaves your device.
 
 ## Third-party services
 

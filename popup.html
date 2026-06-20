@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <span class="logo">♞</span>
+    <h1>Chessstay</h1>
+  </header>
+
+  <main>
+    <label class="row">
+      <div class="text">
+        <span class="title">Sound alert</span>
+        <span class="desc">Beep when it's your turn (only while you're on another tab)</span>
+      </div>
+      <input type="checkbox" id="soundEnabled" class="switch" />
+    </label>
+
+    <label class="row">
+      <div class="text">
+        <span class="title">Blinking</span>
+        <span class="desc">Flash the popup background white</span>
+      </div>
+      <input type="checkbox" id="blinkEnabled" class="switch" />
+    </label>
+
+    <label class="row">
+      <div class="text">
+        <span class="title">Non-chess pages only</span>
+        <span class="desc">Don't show the popup on the chess.com tab itself</span>
+      </div>
+      <input type="checkbox" id="nonChessOnly" class="switch" />
+    </label>
+  </main>
+
+  <footer>Settings save automatically</footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

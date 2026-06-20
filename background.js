@@ -26,15 +26,20 @@ function showOverlayInTab() {
 
   try {
     // Restore as right/bottom distance so position is consistent across tabs
-    // regardless of scrollbar width or viewport differences.
-    chrome.storage.local.get({ remoteRight: null, remoteBottom: null }, ({ remoteRight, remoteBottom }) => {
-      if (remoteRight !== null) {
-        el.style.right  = remoteRight  + 'px';
-        el.style.bottom = remoteBottom + 'px';
-        el.style.left   = 'auto';
-        el.style.top    = 'auto';
+    // regardless of scrollbar width or viewport differences. Also apply the
+    // blink setting.
+    chrome.storage.local.get(
+      { remoteRight: null, remoteBottom: null, blinkEnabled: true },
+      ({ remoteRight, remoteBottom, blinkEnabled }) => {
+        if (remoteRight !== null) {
+          el.style.right  = remoteRight  + 'px';
+          el.style.bottom = remoteBottom + 'px';
+          el.style.left   = 'auto';
+          el.style.top    = 'auto';
+        }
+        if (!blinkEnabled) el.style.animation = 'none';
       }
-    });
+    );
   } catch {}
 
   el.addEventListener('mousedown', e => {
