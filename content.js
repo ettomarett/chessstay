@@ -76,6 +76,12 @@ const CSS = `
 `;
 
 function showOverlay() {
+  // Remove any stale overlays first (e.g. one left by an orphaned content
+  // script after an extension reload, or a stray remote overlay). Guarantees
+  // exactly one overlay on the page.
+  document.querySelectorAll('#chessstay-overlay, #chessstay-style, #chessstay-remote, #chessstay-remote-style')
+    .forEach(n => n.remove());
+  if (overlay && !overlay.isConnected) overlay = null;
   if (overlay) return;
 
   const style = document.createElement('style');

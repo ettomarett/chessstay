@@ -73,6 +73,10 @@ function hideOverlayInTab() {
 async function showOnTab(tabId) {
   if (!tabId) return;
   try {
+    // Never put a remote overlay on a chess.com game tab — content.js owns
+    // the overlay there. Avoids a double overlay if gameTabId is briefly stale.
+    const tab = await chrome.tabs.get(tabId);
+    if (/^https:\/\/www\.chess\.com\/(game|play)\//.test(tab.url || '')) return;
     await chrome.scripting.executeScript({ target: { tabId }, func: showOverlayInTab });
     await chrome.storage.session.set({ overlayTabId: tabId });
   } catch {}
