@@ -81,13 +81,15 @@ function showOverlay() {
   document.body.appendChild(overlay);
 
   // Restore saved position
-  chrome.storage.local.get({ csTop: 80, csLeft: null }, ({ csTop, csLeft }) => {
-    overlay.style.top = csTop + 'px';
-    if (csLeft !== null) {
-      overlay.style.left = csLeft + 'px';
-      overlay.style.right = 'auto';
-    }
-  });
+  try {
+    chrome.storage.local.get({ csTop: 80, csLeft: null }, ({ csTop, csLeft }) => {
+      overlay.style.top = csTop + 'px';
+      if (csLeft !== null) {
+        overlay.style.left = csLeft + 'px';
+        overlay.style.right = 'auto';
+      }
+    });
+  } catch {}
 
   makeDraggable(overlay);
   playBeep();
@@ -123,7 +125,7 @@ function makeDraggable(el) {
     function onUp() {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup',   onUp);
-      chrome.storage.local.set({ csLeft: Math.round(left), csTop: Math.round(top) });
+      try { chrome.storage.local.set({ csLeft: Math.round(left), csTop: Math.round(top) }); } catch {}
     }
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup',   onUp);
