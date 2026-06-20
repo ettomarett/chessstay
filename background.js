@@ -64,13 +64,14 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   closeAlertWindow();
 });
 
-// When the user clicks any other Chrome window, pull the alert back to front.
+// When focus moves away from the alert, flash it in the taskbar instead of
+// stealing focus — this lets the user type freely while still being reminded.
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
   const { isMyTurn, alertWindowId } = await getState();
   if (!isMyTurn || alertWindowId === null) return;
   if (windowId === chrome.windows.WINDOW_ID_NONE) return;
   if (windowId !== alertWindowId) {
-    chrome.windows.update(alertWindowId, { focused: true }).catch(() => {});
+    chrome.windows.update(alertWindowId, { drawAttention: true }).catch(() => {});
   }
 });
 
