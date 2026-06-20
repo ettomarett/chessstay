@@ -1,13 +1,7 @@
-// Detects when it's your turn on chess.com and notifies the background script.
-// Works for both live games (clock-based) and daily games (title-based).
-
 let myTurnActive = false;
+let overlay = null;
 
-function send(type) {
-  try {
-    chrome.runtime.sendMessage({ type });
-  } catch {}
-}
+// ── Turn detection ────────────────────────────────────────────────────────────
 
 function isMyTurn() {
   if (document.querySelector('.clock-bottom.clock-player-turn')) return true;
@@ -16,30 +10,157 @@ function isMyTurn() {
   return false;
 }
 
+function send(type) {
+  try { chrome.runtime.sendMessage({ type }); } catch {}
+}
+
 function onDomChange() {
   const nowMyTurn = isMyTurn();
   if (nowMyTurn && !myTurnActive) {
     myTurnActive = true;
+    showOverlay();
     send('MY_TURN');
   } else if (!nowMyTurn && myTurnActive) {
     myTurnActive = false;
+    removeOverlay();
     send('TURN_OVER');
   }
 }
 
+// ── DOM overlay ───────────────────────────────────────────────────────────────
+
+const CSS = `
+  #chessstay-overlay {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 180px;
+    padding: 14px 14px 12px;
+    background: #1a1a2e;
+    border: 2px solid #f0c040;
+    border-radius: 12px;
+    z-index: 2147483647;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+    font-family: 'Segoe UI', sans-serif;
+    cursor: move;
+    user-select: none;
+  }
+  #chessstay-overlay .cs-knight {
+    font-size: 34px;
+    animation: cs-pulse 0.8s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+  @keyframes cs-pulse {
+    from { transform: scale(1);    filter: brightness(1); }
+    to   { transform: scale(1.15); filter: brightness(1.4); }
+  }
+  #chessstay-overlay .cs-label {
+    font-size: 15px;
+    font-weight: 800;
+    color: #f0c040;
+    letter-spacing: 1px;
+    pointer-events: none;
+  }
+`;
+
+function showOverlay() {
+  if (overlay) return;
+
+  const style = document.createElement('style');
+  style.id = 'chessstay-style';
+  style.textContent = CSS;
+  document.head.appendChild(style);
+
+  overlay = document.createElement('div');
+  overlay.id = 'chessstay-overlay';
+  overlay.innerHTML = '<div class="cs-knight">♞</div><div class="cs-label">YOUR TURN!</div>';
+  document.body.appendChild(overlay);
+
+  // Restore saved position
+  chrome.storage.local.get({ csTop: 80, csLeft: null }, ({ csTop, csLeft }) => {
+    overlay.style.top = csTop + 'px';
+    if (csLeft !== null) {
+      overlay.style.left = csLeft + 'px';
+      overlay.style.right = 'auto';
+    }
+  });
+
+  makeDraggable(overlay);
+  playBeep();
+}
+
+function removeOverlay() {
+  if (!overlay) return;
+  overlay.remove();
+  overlay = null;
+  const style = document.getElementById('chessstay-style');
+  if (style) style.remove();
+}
+
+function makeDraggable(el) {
+  el.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const rect = el.getBoundingClientRect();
+    let left = rect.left;
+    let top  = rect.top;
+    el.style.left  = left + 'px';
+    el.style.right = 'auto';
+    el.style.top   = top + 'px';
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    function onMove(e) {
+      left = rect.left + (e.clientX - startX);
+      top  = rect.top  + (e.clientY - startY);
+      el.style.left = left + 'px';
+      el.style.top  = top  + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+      chrome.storage.local.set({ csLeft: Math.round(left), csTop: Math.round(top) });
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  });
+}
+
+function playBeep() {
+  try {
+    const ctx = new AudioContext();
+    [523, 659, 784].forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
+      osc.start(ctx.currentTime + i * 0.12);
+      osc.stop(ctx.currentTime  + i * 0.12 + 0.4);
+    });
+  } catch {}
+}
+
+// ── Observers ─────────────────────────────────────────────────────────────────
+
 const bodyObserver = new MutationObserver(onDomChange);
-bodyObserver.observe(document.body, {
-  subtree: true,
-  attributes: true,
-  attributeFilter: ['class'],
-});
+bodyObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
 const titleEl = document.querySelector('title');
 if (titleEl) {
-  const titleObserver = new MutationObserver(onDomChange);
-  titleObserver.observe(titleEl, { childList: true });
+  new MutationObserver(onDomChange).observe(titleEl, { childList: true });
 }
 
-window.addEventListener('pagehide', () => send('TURN_OVER'));
+window.addEventListener('pagehide', () => {
+  removeOverlay();
+  send('TURN_OVER');
+});
 
 onDomChange();
