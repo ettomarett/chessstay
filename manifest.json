@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Chess Turn Reminder",
+  "version": "1.0",
+  "description": "Notifies you when it's your turn on chess.com",
+  "permissions": ["storage"],
+  "host_permissions": ["https://www.chess.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.chess.com/game/*",
+        "https://www.chess.com/play/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png"
+    },
+    "default_title": "Chess Turn Reminder"
+  }
+}

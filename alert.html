@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Your Turn!</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #fff;
+      width: 320px;
+      height: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .pulse {
+      font-size: 52px;
+      animation: pulse 0.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1);   filter: brightness(1); }
+      to   { transform: scale(1.15); filter: brightness(1.4); }
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #f0c040;
+      text-shadow: 0 0 18px #f0c04088;
+    }
+
+    button {
+      padding: 8px 32px;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      background: #f0c040;
+      color: #1a1a2e;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover { background: #ffd966; }
+  </style>
+</head>
+<body>
+  <div class="pulse">♞</div>
+  <h1>YOUR TURN!</h1>
+  <button onclick="window.close()">Got it</button>
+
+  <script>
+    // Beep when the window opens
+    const ctx = new AudioContext();
+    const notes = [523, 659, 784]; // C5 E5 G5 — a quick rising chord
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
+      osc.start(ctx.currentTime + i * 0.12);
+      osc.stop(ctx.currentTime + i * 0.12 + 0.4);
+    });
+
+    // Poll position every 500ms — mousemove only fires inside the content area,
+    // not when the user drags by the title bar, so interval is the reliable approach.
+    setInterval(() => {
+      chrome.storage.local.set({ alertTop: window.screenTop, alertLeft: window.screenLeft });
+    }, 500);
+  </script>
+</body>
+</html>
