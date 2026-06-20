@@ -73,6 +73,8 @@ function hideOverlayInTab() {
 async function showOnTab(tabId) {
   if (!tabId) return;
   try {
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab.url?.startsWith('http')) return;
     await chrome.scripting.executeScript({ target: { tabId }, func: showOverlayInTab });
     await chrome.storage.session.set({ overlayTabId: tabId });
   } catch {}
