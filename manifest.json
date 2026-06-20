@@ -3,18 +3,21 @@
   "name": "Chessstay - Chess Turn Reminder",
   "version": "1.0",
   "description": "Notifies you when it's your turn on chess.com",
-  "permissions": ["storage", "tabs", "scripting"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": ["https://www.chess.com/*", "*://*/*"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://www.chess.com/game/*",
-        "https://www.chess.com/play/*"
-      ],
+      "matches": ["https://www.chess.com/game/*", "https://www.chess.com/play/*"],
       "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*/*"],
+      "exclude_matches": ["https://www.chess.com/*"],
+      "js": ["remote-overlay.js"],
       "run_at": "document_idle"
     }
   ],
