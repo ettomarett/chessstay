@@ -1,8 +1,8 @@
-# Chess Turn Reminder
+# Chessstay - Chess Turn Reminder
 
 A Chrome extension that pops up an alert **only when it's your turn** on [chess.com](https://www.chess.com), so you never forget a running game.
 
-![Chess Turn Reminder](readdd.png)
+![Chessstay - Chess Turn Reminder](readdd.png)
 
 ## Features
 

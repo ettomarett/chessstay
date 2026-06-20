@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Chess Turn Reminder",
+  "name": "Chessstay - Chess Turn Reminder",
   "version": "1.0",
   "description": "Notifies you when it's your turn on chess.com",
   "permissions": ["storage"],
@@ -28,6 +28,6 @@
       "16": "icon16.png",
       "48": "icon48.png"
     },
-    "default_title": "Chess Turn Reminder"
+    "default_title": "Chessstay - Chess Turn Reminder"
   }
 }

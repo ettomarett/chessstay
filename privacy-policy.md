@@ -1,10 +1,10 @@
-# Privacy Policy — Chess Turn Reminder
+# Privacy Policy — Chessstay - Chess Turn Reminder
 
 _Last updated: June 20, 2026_
 
 ## Overview
 
-Chess Turn Reminder is a Chrome extension that notifies you when it is your turn in a chess game on chess.com. This policy explains what data the extension accesses and how it is handled.
+Chessstay - Chess Turn Reminder is a Chrome extension that notifies you when it is your turn in a chess game on chess.com. This policy explains what data the extension accesses and how it is handled.
 
 ## Data collected
 
