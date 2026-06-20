@@ -4,7 +4,7 @@
   "version": "1.0",
   "description": "Notifies you when it's your turn on chess.com",
   "permissions": ["storage", "tabs", "scripting"],
-  "host_permissions": ["https://www.chess.com/*", "*://*/*"],
+  "host_permissions": ["https://www.chess.com/*", "*://*/*", "file://*/*"],
   "background": {
     "service_worker": "background.js"
   },
@@ -15,7 +15,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["*://*/*"],
+      "matches": ["*://*/*", "file://*/*"],
       "exclude_matches": ["https://www.chess.com/*"],
       "js": ["remote-overlay.js"],
       "run_at": "document_idle"
