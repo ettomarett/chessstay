@@ -1,87 +1,101 @@
-// State persisted in session storage so it survives service-worker sleep cycles.
 async function getState() {
-  return chrome.storage.session.get({ alertWindowId: null, isMyTurn: false, gameTabId: null });
+  return chrome.storage.session.get({ isMyTurn: false, gameTabId: null, overlayTabId: null });
 }
 
-async function openPopup() {
-  const { alertWindowId } = await getState();
-  if (alertWindowId !== null) {
-    try { await chrome.windows.update(alertWindowId, { drawAttention: true }); return; }
-    catch { await chrome.storage.session.set({ alertWindowId: null }); }
-  }
-  const { popupTop, popupLeft } = await chrome.storage.local.get({ popupTop: 80, popupLeft: 80 });
-  const win = await chrome.windows.create({
-    url: chrome.runtime.getURL('alert.html'),
-    type: 'popup',
-    width: 220,
-    height: 130,
-    focused: false, // appears on screen without stealing keyboard focus
-    top: popupTop,
-    left: popupLeft,
-  });
-  await chrome.storage.session.set({ alertWindowId: win.id });
-}
-
-async function closePopup() {
-  const { alertWindowId } = await getState();
-  if (alertWindowId === null) return;
+// Inject the reminder overlay into any tab (silently fails on chrome:// pages etc.)
+async function injectOverlay(tabId) {
   try {
-    const win = await chrome.windows.get(alertWindowId);
-    await chrome.storage.local.set({ popupTop: win.top, popupLeft: win.left });
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        if (document.getElementById('chessstay-remote')) return;
+        const el = document.createElement('div');
+        el.id = 'chessstay-remote';
+        el.style.cssText = [
+          'position:fixed', 'bottom:24px', 'right:24px',
+          'width:160px', 'padding:12px 10px',
+          'background:#1a1a2e', 'border:2px solid #f0c040', 'border-radius:12px',
+          'z-index:2147483647',
+          'display:flex', 'flex-direction:column', 'align-items:center', 'gap:6px',
+          'box-shadow:0 4px 24px rgba(0,0,0,.6)',
+          'font-family:Segoe UI,sans-serif', 'color:#fff',
+          'pointer-events:none',  // never blocks clicks or typing
+        ].join(';');
+
+        const style = document.createElement('style');
+        style.textContent = '@keyframes cspulse{from{transform:scale(1)}to{transform:scale(1.15)}}' +
+          '#chessstay-remote .k{font-size:30px;animation:cspulse .8s ease-in-out infinite alternate}' +
+          '#chessstay-remote .t{font-size:13px;font-weight:800;color:#f0c040;letter-spacing:1px}';
+        document.head.appendChild(style);
+
+        el.innerHTML = '<div class="k">♞</div><div class="t">YOUR TURN!</div>';
+        document.body.appendChild(el);
+      },
+    });
+    await chrome.storage.session.set({ overlayTabId: tabId });
   } catch {}
-  try { await chrome.windows.remove(alertWindowId); } catch {}
-  await chrome.storage.session.set({ alertWindowId: null });
 }
 
-// Returns true when the given tab ID is the currently active tab in its window.
-async function tabIsActive(tabId) {
+async function removeOverlay() {
+  const { overlayTabId } = await getState();
+  if (overlayTabId === null) return;
   try {
-    const tab = await chrome.tabs.get(tabId);
-    const [activeTab] = await chrome.tabs.query({ active: true, windowId: tab.windowId });
-    return activeTab?.id === tabId;
-  } catch { return false; }
+    await chrome.scripting.executeScript({
+      target: { tabId: overlayTabId },
+      func: () => {
+        document.getElementById('chessstay-remote')?.remove();
+      },
+    });
+  } catch {}
+  await chrome.storage.session.set({ overlayTabId: null });
 }
 
-// ── Message handler ───────────────────────────────────────────────────────────
+// ── Messages from chess.com content script ────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender) => {
   const tabId = sender.tab?.id ?? null;
 
   if (message.type === 'MY_TURN') {
     chrome.storage.session.set({ isMyTurn: true, gameTabId: tabId });
-    // Show popup only when the chess.com tab isn't currently in focus.
-    tabIsActive(tabId).then(active => { if (!active) openPopup(); });
+    // If user is not currently on the chess.com tab, inject into wherever they are.
+    chrome.tabs.query({ active: true, currentWindow: true }, ([active]) => {
+      if (active && active.id !== tabId) injectOverlay(active.id);
+    });
 
   } else if (message.type === 'TURN_OVER') {
     chrome.storage.session.set({ isMyTurn: false });
-    closePopup();
+    removeOverlay();
   }
 });
 
-// ── Tab / window switching ────────────────────────────────────────────────────
+// ── Tab switching ─────────────────────────────────────────────────────────────
 
-// Fires when the user switches tabs within a window.
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   const { isMyTurn, gameTabId } = await getState();
   if (!isMyTurn) return;
+
   if (tabId === gameTabId) {
-    closePopup(); // back on chess.com — DOM overlay takes over
+    removeOverlay(); // chess.com tab — DOM overlay in content.js handles it
   } else {
-    openPopup(); // left chess.com — show floating popup
+    await removeOverlay(); // clean up previous tab first
+    injectOverlay(tabId);
   }
 });
 
-// Fires when the focused Chrome window changes (e.g. switching to a second Chrome window).
+// Switching between Chrome windows.
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE) return; // switched to non-Chrome app
-  const { isMyTurn, gameTabId, alertWindowId } = await getState();
-  if (!isMyTurn || windowId === alertWindowId) return;
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+  const { isMyTurn, gameTabId } = await getState();
+  if (!isMyTurn) return;
 
-  const [activeTab] = await chrome.tabs.query({ active: true, windowId });
-  if (activeTab?.id === gameTabId) {
-    closePopup();
+  const [active] = await chrome.tabs.query({ active: true, windowId });
+  if (!active) return;
+
+  if (active.id === gameTabId) {
+    removeOverlay();
   } else {
-    openPopup();
+    await removeOverlay();
+    injectOverlay(active.id);
   }
 });
 
@@ -91,5 +105,5 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   const { gameTabId } = await getState();
   if (tabId !== gameTabId) return;
   chrome.storage.session.set({ isMyTurn: false, gameTabId: null });
-  closePopup();
+  removeOverlay();
 });
