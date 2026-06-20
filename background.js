@@ -90,15 +90,22 @@ async function hideCurrentOverlay() {
 // ── Startup: wipe stale state and scrub leftover DOM elements ─────────────────
 
 (async () => {
+  // Do NOT reset session state here — chrome.storage.session already persists
+  // correctly across service worker sleep/wake cycles. Resetting it here would
+  // wipe isMyTurn every time Chrome wakes the service worker (every ~30s).
   await chrome.storage.local.set({ showRemoteOverlay: false });
-  await chrome.storage.session.set({ isMyTurn: false, gameTabId: null, overlayTabId: null });
-  const tabs = await chrome.tabs.query({});
-  for (const tab of tabs) {
-    if (!tab.id || !tab.url?.match(/^(https?|file):\/\//)) continue;
-    chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: hideOverlayInTab,
-    }).catch(() => {});
+
+  // Only scrub leftover DOM elements when no turn is active.
+  const { isMyTurn } = await chrome.storage.session.get({ isMyTurn: false });
+  if (!isMyTurn) {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (!tab.id || !tab.url?.match(/^(https?|file):\/\//)) continue;
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: hideOverlayInTab,
+      }).catch(() => {});
+    }
   }
 })();
 
