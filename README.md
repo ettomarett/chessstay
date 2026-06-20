@@ -2,7 +2,7 @@
 
 A Chrome extension that shows a reminder **only when it's your turn** on [chess.com](https://www.chess.com), so you never forget a running game — even when you've wandered off to another tab.
 
-![Chessstay - Chess Turn Reminder](readdd.png)
+![Chessstay - Chess Turn Reminder](chessstay.jpg)
 
 ## Features
 
@@ -17,6 +17,8 @@ A Chrome extension that shows a reminder **only when it's your turn** on [chess.
 ## Settings
 
 Click the extension icon to open the settings popup:
+
+![Chessstay settings](settings.jpg)
 
 | Setting | Default | What it does |
 |---|---|---|
