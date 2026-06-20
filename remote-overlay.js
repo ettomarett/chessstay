@@ -39,10 +39,6 @@ if (!window._chessstayLoaded) {
       });
     } catch {}
 
-    makeDraggable(el);
-  }
-
-  function makeDraggable(el) {
     el.addEventListener('mousedown', e => {
       e.preventDefault();
       const rect  = el.getBoundingClientRect();
@@ -51,22 +47,48 @@ if (!window._chessstayLoaded) {
       el.style.right = 'auto'; el.style.bottom = 'auto';
 
       const startX = e.clientX, startY = e.clientY;
-
-      function onMove(e) {
+      const onMove = e => {
         left = rect.left + (e.clientX - startX);
         top  = rect.top  + (e.clientY - startY);
         el.style.left = left + 'px';
         el.style.top  = top  + 'px';
-      }
-      function onUp() {
+      };
+      const onUp = () => {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup',   onUp);
         try { chrome.storage.local.set({ remoteLeft: Math.round(left), remoteTop: Math.round(top) }); } catch {}
-      }
+      };
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup',   onUp);
     });
   }
 
-  showOverlay();
+  function hideOverlay() {
+    document.getElementById('chessstay-remote')?.remove();
+    document.getElementById('chessstay-remote-style')?.remove();
+  }
+
+  function syncOverlay() {
+    try {
+      chrome.storage.local.get({ showRemoteOverlay: false }, ({ showRemoteOverlay }) => {
+        if (showRemoteOverlay) showOverlay(); else hideOverlay();
+      });
+    } catch {}
+  }
+
+  // React instantly to MY_TURN / TURN_OVER via storage flag changes.
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local' || !('showRemoteOverlay' in changes)) return;
+      if (changes.showRemoteOverlay.newValue) showOverlay(); else hideOverlay();
+    });
+  } catch {}
+
+  // When user switches back to this tab, re-sync with current turn state.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') syncOverlay();
+  });
+
+  // Check immediately on load (handles tab opened during an active turn).
+  syncOverlay();
 }
