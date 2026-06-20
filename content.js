@@ -1,3 +1,9 @@
+// Re-injectable: if a previous instance is running (e.g. after extension
+// reload re-injects this file), tear down its observers first.
+if (window._chessstayContent) {
+  try { window._chessstayContent.disconnect(); } catch {}
+}
+
 let myTurnActive = false;
 let overlay = null;
 
@@ -138,10 +144,20 @@ function makeDraggable(el) {
 const bodyObserver = new MutationObserver(onDomChange);
 bodyObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
+const titleObserver = new MutationObserver(onDomChange);
 const titleEl = document.querySelector('title');
 if (titleEl) {
-  new MutationObserver(onDomChange).observe(titleEl, { childList: true });
+  titleObserver.observe(titleEl, { childList: true });
 }
+
+// Expose a teardown handle so a re-injected instance can disconnect this one.
+window._chessstayContent = {
+  disconnect() {
+    bodyObserver.disconnect();
+    titleObserver.disconnect();
+    removeOverlay();
+  },
+};
 
 window.addEventListener('pagehide', () => {
   removeOverlay();

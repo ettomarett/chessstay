@@ -107,6 +107,21 @@ async function hideCurrentOverlay() {
       }).catch(() => {});
     }
   }
+
+  // Re-inject content.js into any already-open chess.com game/play tabs.
+  // After an extension reload the existing content script is orphaned and can
+  // no longer send MY_TURN, so other tabs would never light up. Re-injecting
+  // restores a live script without the user having to refresh chess.com.
+  const chessTabs = await chrome.tabs.query({
+    url: ['https://www.chess.com/game/*', 'https://www.chess.com/play/*'],
+  });
+  for (const tab of chessTabs) {
+    if (!tab.id) continue;
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content.js'],
+    }).catch(() => {});
+  }
 })();
 
 // ── Messages from chess.com content script ────────────────────────────────────
