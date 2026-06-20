@@ -1,6 +1,7 @@
-if (!window._chessstayLoaded) {
-  window._chessstayLoaded = true;
-
+// Manifest content script — runs on pages loaded fresh after extension install.
+// For pre-existing tabs the background injects showOverlayInTab() directly via
+// executeScript, which doesn't go through this file at all.
+(function () {
   function showOverlay() {
     if (document.getElementById('chessstay-remote')) return;
 
@@ -45,7 +46,6 @@ if (!window._chessstayLoaded) {
       let left = rect.left, top = rect.top;
       el.style.left = left + 'px'; el.style.top = top + 'px';
       el.style.right = 'auto'; el.style.bottom = 'auto';
-
       const startX = e.clientX, startY = e.clientY;
       const onMove = e => {
         left = rect.left + (e.clientX - startX);
@@ -68,15 +68,7 @@ if (!window._chessstayLoaded) {
     document.getElementById('chessstay-remote-style')?.remove();
   }
 
-  function syncOverlay() {
-    try {
-      chrome.storage.local.get({ showRemoteOverlay: false }, ({ showRemoteOverlay }) => {
-        if (showRemoteOverlay) showOverlay(); else hideOverlay();
-      });
-    } catch {}
-  }
-
-  // React instantly to MY_TURN / TURN_OVER via storage flag changes.
+  // React to MY_TURN / TURN_OVER via storage flag.
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'local' || !('showRemoteOverlay' in changes)) return;
@@ -84,11 +76,10 @@ if (!window._chessstayLoaded) {
     });
   } catch {}
 
-  // When user switches back to this tab, re-sync with current turn state.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') syncOverlay();
-  });
-
-  // Check immediately on load (handles tab opened during an active turn).
-  syncOverlay();
-}
+  // Check on load in case a turn is already active (e.g. page refreshed mid-game).
+  try {
+    chrome.storage.local.get({ showRemoteOverlay: false }, ({ showRemoteOverlay }) => {
+      if (showRemoteOverlay) showOverlay();
+    });
+  } catch {}
+}());
