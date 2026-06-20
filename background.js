@@ -5,8 +5,15 @@ async function getState() {
 async function showOverlay(tabId) {
   try {
     await chrome.tabs.sendMessage(tabId, { type: 'SHOW_OVERLAY' });
-    await chrome.storage.session.set({ overlayTabId: tabId });
-  } catch {}
+  } catch {
+    // Content script not present — tab was open before extension loaded.
+    // Inject the file, then send the message.
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['remote-overlay.js'] });
+      await chrome.tabs.sendMessage(tabId, { type: 'SHOW_OVERLAY' });
+    } catch { return; }
+  }
+  await chrome.storage.session.set({ overlayTabId: tabId });
 }
 
 async function hideOverlay() {

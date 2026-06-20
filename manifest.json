@@ -3,7 +3,7 @@
   "name": "Chessstay - Chess Turn Reminder",
   "version": "1.0",
   "description": "Notifies you when it's your turn on chess.com",
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": ["https://www.chess.com/*", "*://*/*"],
   "background": {
     "service_worker": "background.js"
