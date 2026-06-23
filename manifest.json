@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Chessstay - Chess Turn Reminder",
-  "version": "1.0",
+  "version": "2.0",
   "description": "Notifies you when it's your turn on chess.com",
   "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": ["https://www.chess.com/*", "*://*/*", "file://*/*"],

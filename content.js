@@ -1,3 +1,5 @@
+(function () {
+
 // Re-injectable: if a previous instance is running (e.g. after extension
 // reload re-injects this file), tear down its observers first.
 if (window._chessstayContent) {
@@ -16,12 +18,24 @@ function isMyTurn() {
   return false;
 }
 
+function isGameOver() {
+  // Positive indicators: result modal or game-over class (catches most endings).
+  if (document.querySelector('.board-modal-container')) return true;
+  if (document.querySelector('[class*="game-over"]')) return true;
+  if (document.querySelector('[class*="gameOver"]')) return true;
+  // Robust fallback: a resign button is present for the entire duration of any
+  // active live game. Its absence means the game has ended (covers abandoned,
+  // aborted, and any case where the result modal hasn't appeared yet).
+  if (!document.querySelector('[aria-label*="Resign" i]')) return true;
+  return false;
+}
+
 function send(type) {
   try { chrome.runtime.sendMessage({ type }); } catch {}
 }
 
 function onDomChange() {
-  const nowMyTurn = isMyTurn();
+  const nowMyTurn = isMyTurn() && !isGameOver();
   if (nowMyTurn && !myTurnActive) {
     myTurnActive = true;
     showOverlay();
@@ -222,3 +236,5 @@ window.addEventListener('pagehide', () => {
 });
 
 onDomChange();
+
+}());
